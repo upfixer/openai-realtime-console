@@ -60,7 +60,9 @@ export function ConsolePage() {
    * If we're using the local relay server, we don't need this
    */
   const apiKey = LOCAL_RELAY_SERVER_URL
-    ? ''
+    ? localStorage.getItem('tmp::voice_api_key') ||
+      prompt('OpenAI API Key') ||
+      ''
     : localStorage.getItem('tmp::voice_api_key') ||
       prompt('OpenAI API Key') ||
       '';
@@ -83,7 +85,11 @@ export function ConsolePage() {
   const clientRef = useRef<RealtimeClient>(
     new RealtimeClient(
       LOCAL_RELAY_SERVER_URL
-        ? { url: LOCAL_RELAY_SERVER_URL }
+        ? { url: LOCAL_RELAY_SERVER_URL,
+           apiKey: apiKey,
+            dangerouslyAllowAPIKeyInBrowser: true,
+            debug: true,
+          }
         : {
             apiKey: apiKey,
             dangerouslyAllowAPIKeyInBrowser: true,

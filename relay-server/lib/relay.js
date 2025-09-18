@@ -21,9 +21,11 @@ export class RealtimeRelay {
       return;
     }
 
+    this.log(`req.url "${req.url}"`)
+
     const url = new URL(req.url, `http://${req.headers.host}`);
     const pathname = url.pathname;
-
+    this.log(`url "${url}"`)
     if (pathname !== '/') {
       this.log(`Invalid pathname: "${pathname}"`);
       ws.close();
@@ -32,11 +34,11 @@ export class RealtimeRelay {
 
     // Instantiate new client
     this.log(`Connecting with key "${this.apiKey.slice(0, 3)}..."`);
-    const client = new RealtimeClient({ apiKey: this.apiKey });
+    const client = new RealtimeClient({ url: LOCAL_RELAY_SERVER_URL, apiKey: this.apiKey });
 
     // Relay: OpenAI Realtime API Event -> Browser Event
     client.realtime.on('server.*', (event) => {
-      this.log(`Relaying "${event.type}" to Client`);
+      this.log(`<= Relaying "${event.type}" to Client: "${JSON.stringify(event)}"`);
       ws.send(JSON.stringify(event));
     });
     client.realtime.on('close', () => ws.close());
@@ -47,7 +49,7 @@ export class RealtimeRelay {
     const messageHandler = (data) => {
       try {
         const event = JSON.parse(data);
-        this.log(`Relaying "${event.type}" to OpenAI`);
+        this.log(`=> Relaying "${event.type}" to OpenAI: "${JSON.stringify(event)}"`);
         client.realtime.send(event.type, event);
       } catch (e) {
         console.error(e.message);
@@ -57,6 +59,7 @@ export class RealtimeRelay {
     ws.on('message', (data) => {
       if (!client.isConnected()) {
         messageQueue.push(data);
+        this.log(`messageQueue push "${data}"`)
       } else {
         messageHandler(data);
       }
