@@ -44,11 +44,12 @@ export function ConsolePage() {
    * Ask user for API Key
    * If we're using the local relay server, we don't need this
    */
-  const apiKey =
-    localStorage.getItem('tmp::voice_api_key') || prompt('OpenAI API Key') || '';
-  if (apiKey !== '') {
-    localStorage.setItem('tmp::voice_api_key', apiKey);
-  }
+  // const apiKey =
+  //   localStorage.getItem('tmp::voice_api_key') || prompt('OpenAI API Key') || '';
+  // if (apiKey !== '') {
+  //   localStorage.setItem('tmp::voice_api_key', apiKey);
+  // }
+  const apiKey = "APIKEY needed";
 
   /**
    * Instantiate:
@@ -66,9 +67,9 @@ export function ConsolePage() {
     new RealtimeClient(
       {
         apiKey: apiKey,
-        // baseUrl: "ws://127.0.0.1/openai/v1/",
+        baseUrl: "wss://inference.generativeai.us-ashburn-1.oci.oraclecloud.com/openai/v1/realtime",
+        model: 'openai.gpt-realtime',
         dangerouslyAllowAPIKeyInBrowser: true,
-        model: 'gpt-realtime',
       }
     )
   );
@@ -243,7 +244,7 @@ export function ConsolePage() {
       await wavRecorder.pause();
     }
     client.updateSession({
-      turn_detection: value === 'none' ? null : { type: 'server_vad' },
+      audio: {input: {turn_detection: value === 'none' ? null : { type: 'server_vad' }}},
     });
     if (value === 'server_vad' && client.isConnected()) {
       await wavRecorder.record((data) => client.appendInputAudio(data.mono));
