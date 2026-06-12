@@ -279,6 +279,7 @@ export class RealtimeClient extends Emitter {
   defaultSessionConfig: any;
   tools: Record<string, { definition: any; handler: (args: any) => Promise<any> | any }> = {};
   realtime: RealtimeSocket | null = null;
+  disconnectingRealtime: RealtimeSocket | null = null;
   conversation = new RealtimeConversation();
   inputAudioBuffer = new Int16Array(0);
   apiKey: string;
@@ -351,6 +352,30 @@ export class RealtimeClient extends Emitter {
       });
     });
     rt.on('error', (error: any) => this.dispatch('error', error));
+    rt.socket?.addEventListener?.('close', (event: CloseEvent) => {
+      const wasIntentionalClose = this.disconnectingRealtime === rt;
+      if (wasIntentionalClose) this.disconnectingRealtime = null;
+      if (this.realtime === rt) this.realtime = null;
+
+      this.sessionCreated = false;
+      this.isGreetingSent = false;
+
+      const closedEvent = {
+        type: 'closed',
+        event_id: `connection.closed.${Date.now()}`,
+        code: event.code,
+        reason: event.reason,
+        was_clean: event.wasClean,
+      };
+      this.dispatch('realtime.event', {
+        time: new Date().toISOString(),
+        source: 'server',
+        event: closedEvent,
+      });
+      if (!wasIntentionalClose) {
+        this.dispatch('connection.closed', closedEvent);
+      }
+    });
 
     rt.on('session.created', () => {
       console.log("!!!session.created")
@@ -450,7 +475,11 @@ export class RealtimeClient extends Emitter {
   disconnect() {
     this.sessionCreated = false;
     this.conversation.clear();
-    this.realtime?.close();
+    const realtime = this.realtime;
+    if (realtime) {
+      this.disconnectingRealtime = realtime;
+      realtime.close();
+    }
     this.realtime = null;
     this.isGreetingSent = false;
   }

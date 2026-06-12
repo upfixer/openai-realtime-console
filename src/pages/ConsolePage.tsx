@@ -182,6 +182,7 @@ export function ConsolePage() {
    */
   const disconnectConversation = useCallback(async () => {
     setIsConnected(false);
+    setIsRecording(false);
     // setRealtimeEvents([]);
     // setItems([]);
     // setMemoryKv({});
@@ -195,7 +196,9 @@ export function ConsolePage() {
     client.disconnect();
 
     const wavRecorder = wavRecorderRef.current;
-    await wavRecorder.end();
+    if (wavRecorder.getStatus() !== 'ended') {
+      await wavRecorder.end();
+    }
 
     const wavStreamPlayer = wavStreamPlayerRef.current;
     await wavStreamPlayer.interrupt();
@@ -360,9 +363,20 @@ export function ConsolePage() {
     const client = clientRef.current;
 
     // Set instructions
-    client.updateSession({ instructions: instructions });
+    client.updateSession({ 
+      instructions: instructions, 
+      audio: {
+        input: {
+          transcription: {
+            model: 'whisper-1'
+            // model: 'gpt-4o-transcribe'
+            // model: 'gpt-realtime-whisper'
+          }
+        }
+      }
+    });
     // Set transcription, otherwise we don't get user transcriptions back
-    // client.updateSession({ input_audio_transcription: { model: 'whisper-1' } });
+    // client.updateSession({ transcription: { model: 'whisper-1' } });
 
     // Add tools
     client.addTool(
@@ -473,6 +487,9 @@ export function ConsolePage() {
         item.formatted.file = wavFile;
       }
       setItems(items);
+    });
+    client.on('connection.closed', async () => {
+      await disconnectConversation();
     });
 
     setItems(client.conversation.getItems());
